@@ -59,4 +59,28 @@ router.get('/periode', auth, async (req, res) => {
   });
 });
 
+router.get('/stock', auth, async (req, res) => {
+  const Produit = (await import('../models/Produit.js')).default;
+  const produits = await Produit.find().sort('code');
+
+  const totalValeurAchat = produits.reduce((s, p) => s + p.stock * p.prixAchat, 0);
+  const totalValeurVente = produits.reduce((s, p) => s + p.stock * p.prixVente, 0);
+  const totalArticles = produits.reduce((s, p) => s + p.stock, 0);
+  const ruptures = produits.filter(p => p.stock <= 0).length;
+  const faibles = produits.filter(p => p.stock > 0 && p.stock <= 5).length;
+
+  res.json({
+    produits,
+    stats: {
+      totalProduits: produits.length,
+      totalArticles,
+      totalValeurAchat,
+      totalValeurVente,
+      margePotentielle: totalValeurVente - totalValeurAchat,
+      ruptures,
+      faibles,
+    },
+  });
+});
+
 export default router;

@@ -25,9 +25,7 @@ function Ventes() {
     if (!form.produit) return;
 
     if (editId) {
-      // Édition : on supprime et on recrée (pour rester simple côté backend)
-      await api.delete(`/ventes/${editId}`);
-      await api.post('/ventes', form);
+      await api.put(`/ventes/${editId}`, form);
       setEditId(null);
     } else {
       await api.post('/ventes', form);
@@ -45,10 +43,11 @@ function Ventes() {
       note: v.note || '',
     });
     setEditId(v._id);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const remove = async id => {
-    if (!confirm('Supprimer cette vente ?')) return;
+    if (!confirm('Supprimer cette vente ? (le stock sera restauré)')) return;
     await api.delete(`/ventes/${id}`);
     load();
   };
@@ -74,7 +73,7 @@ function Ventes() {
             <option value="">-- Choisir --</option>
             {produits.map(p => (
               <option key={p._id} value={p._id}>
-                {p.nom} ({p.stock} stock)
+                {p.code} — {p.nom} ({p.stock} stock)
               </option>
             ))}
           </select>
@@ -103,6 +102,10 @@ function Ventes() {
             value={form.note}
             onChange={e => setForm({ ...form, note: e.target.value })}
           />
+
+          <div className="bg-slate-50 p-2 rounded text-sm">
+            Total : <b>{(form.quantite * form.prixUnitaire).toFixed(2)} DT</b>
+          </div>
 
           <button className="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded">
             {editId ? 'Mettre à jour' : 'Enregistrer'}
@@ -133,6 +136,7 @@ function Ventes() {
           <table className="w-full text-sm">
             <thead className="bg-slate-100">
               <tr>
+                <th className="p-2 text-left">Code</th>
                 <th className="p-2 text-left">Produit</th>
                 <th className="p-2">Qté</th>
                 <th className="p-2">P.U</th>
@@ -143,33 +147,34 @@ function Ventes() {
             <tbody>
               {ventes.map(v => (
                 <tr key={v._id} className="border-b hover:bg-slate-50">
+                  <td className="p-2 font-mono text-xs bg-slate-50">
+                    {v.produit?.code || '—'}
+                  </td>
                   <td className="p-2">{v.produit?.nom || '—'}</td>
                   <td className="p-2 text-center">{v.quantite}</td>
                   <td className="p-2 text-center">{v.prixUnitaire.toFixed(2)}</td>
                   <td className="p-2 text-center font-bold text-green-700">
                     {v.total.toFixed(2)}
                   </td>
-                  <td className="p-2 text-right space-x-2">
+                  <td className="p-2 text-right">
                     <button
                       onClick={() => edit(v)}
-                      className="text-blue-600 hover:text-blue-800"
-                      title="Modifier"
+                      className="bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1 rounded text-xs font-semibold mr-1"
                     >
-                      <i className="fa fa-pen"></i>
+                      ✏️ Modifier
                     </button>
                     <button
                       onClick={() => remove(v._id)}
-                      className="text-red-600 hover:text-red-800"
-                      title="Supprimer"
+                      className="bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1 rounded text-xs font-semibold"
                     >
-                      <i className="fa fa-trash"></i>
+                      🗑️ Supprimer
                     </button>
                   </td>
                 </tr>
               ))}
               {ventes.length === 0 && (
                 <tr>
-                  <td colSpan="5" className="p-4 text-center text-slate-500">
+                  <td colSpan="6" className="p-4 text-center text-slate-500">
                     Aucune vente aujourd'hui
                   </td>
                 </tr>

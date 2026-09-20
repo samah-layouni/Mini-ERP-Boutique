@@ -1,14 +1,16 @@
 import { NavLink } from 'react-router-dom';
 
 const links = [
-  { to: '/',         label: 'Tableau de bord', icon: 'fa-gauge' },
-  { to: '/ventes',   label: 'Ventes du jour',  icon: 'fa-cash-register' },
-  { to: '/achats',   label: 'Achats du jour',  icon: 'fa-cart-shopping' },
-  { to: '/factures', label: 'Factures',        icon: 'fa-file-invoice' },
-  { to: '/produits', label: 'Produits',        icon: 'fa-box' },
-  { to: '/depenses', label: 'Dépenses',        icon: 'fa-money-bill-wave' },
-  { to: '/rapports', label: 'Rapports',        icon: 'fa-chart-line' },
-  { to: '/admin',    label: 'Admin',           icon: 'fa-user-shield' },
+  { to: '/',               label: 'Tableau de bord',     icon: 'fa-gauge' },
+  { to: '/ventes',         label: 'Ventes du jour',      icon: 'fa-cash-register' },
+  { to: '/achats',         label: 'Achats du jour',      icon: 'fa-cart-shopping' },
+  { to: '/achats-directs', label: 'Achats hors facture', icon: 'fa-bag-shopping' },
+  { to: '/factures',       label: 'Factures',            icon: 'fa-file-invoice' },
+  { to: '/produits',       label: 'Produits',            icon: 'fa-box' },
+  { to: '/stock',          label: 'État du stock',       icon: 'fa-warehouse' },
+  { to: '/depenses',       label: 'Dépenses',            icon: 'fa-money-bill-wave' },
+  { to: '/rapports',       label: 'Rapports',            icon: 'fa-chart-line' },
+  { to: '/admin',          label: 'Admin',               icon: 'fa-user-shield' },
 ];
 
 function Sidebar() {
