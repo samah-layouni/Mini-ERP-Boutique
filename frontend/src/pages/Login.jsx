@@ -23,9 +23,7 @@ function Login() {
       <form onSubmit={submit} className="bg-white p-8 rounded-xl shadow-lg w-96 space-y-4">
         <h1 className="text-2xl font-bold text-center">🏪 Mini ERP</h1>
         <p className="text-center text-sm text-slate-500">Connectez-vous</p>
-
         {err && <div className="bg-red-100 text-red-700 p-2 rounded text-sm">{err}</div>}
-
         <input
           className="w-full border rounded p-2"
           placeholder="Utilisateur"

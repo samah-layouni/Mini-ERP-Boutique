@@ -4,13 +4,9 @@ import Login from './pages/Login.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import Ventes from './pages/Ventes.jsx';
 import Achats from './pages/Achats.jsx';
-import Factures from './pages/Factures.jsx';
-import Produits from './pages/Produits.jsx';
-import Depenses from './pages/Depenses.jsx';
+import Inventaire from './pages/Inventaire.jsx';
 import Rapports from './pages/Rapports.jsx';
 import Admin from './pages/Admin.jsx';
-import AchatsDirects from './pages/AchatsDirects.jsx';
-import Stock from './pages/Stock.jsx';
 
 function Private({ children }) {
   const token = localStorage.getItem('token');
@@ -24,11 +20,7 @@ function App() {
       <Route path="/" element={<Private><Dashboard /></Private>} />
       <Route path="/ventes" element={<Private><Ventes /></Private>} />
       <Route path="/achats" element={<Private><Achats /></Private>} />
-      <Route path="/achats-directs" element={<Private><AchatsDirects /></Private>} />
-      <Route path="/factures" element={<Private><Factures /></Private>} />
-      <Route path="/produits" element={<Private><Produits /></Private>} />
-      <Route path="/stock" element={<Private><Stock /></Private>} />
-      <Route path="/depenses" element={<Private><Depenses /></Private>} />
+      <Route path="/inventaire" element={<Private><Inventaire /></Private>} />
       <Route path="/rapports" element={<Private><Rapports /></Private>} />
       <Route path="/admin" element={<Private><Admin /></Private>} />
     </Routes>

@@ -1,16 +1,12 @@
 import { NavLink } from 'react-router-dom';
 
 const links = [
-  { to: '/',               label: 'Tableau de bord',     icon: 'fa-gauge' },
-  { to: '/ventes',         label: 'Ventes du jour',      icon: 'fa-cash-register' },
-  { to: '/achats',         label: 'Achats du jour',      icon: 'fa-cart-shopping' },
-  { to: '/achats-directs', label: 'Achats hors facture', icon: 'fa-bag-shopping' },
-  { to: '/factures',       label: 'Factures',            icon: 'fa-file-invoice' },
-  { to: '/produits',       label: 'Produits',            icon: 'fa-box' },
-  { to: '/stock',          label: 'État du stock',       icon: 'fa-warehouse' },
-  { to: '/depenses',       label: 'Dépenses',            icon: 'fa-money-bill-wave' },
-  { to: '/rapports',       label: 'Rapports',            icon: 'fa-chart-line' },
-  { to: '/admin',          label: 'Admin',               icon: 'fa-user-shield' },
+  { to: '/',           label: 'Tableau de bord',   icon: 'fa-gauge' },
+    { to: '/admin',      label: 'Admin (Produits & Stock)', icon: 'fa-user-shield' },
+  { to: '/ventes',     label: 'Ventes',            icon: 'fa-cash-register' },
+  { to: '/achats',     label: 'Achats & Dépenses', icon: 'fa-cart-shopping' },
+  { to: '/inventaire', label: 'Inventaire',        icon: 'fa-clipboard-check' },
+  { to: '/rapports',   label: 'Rapports',          icon: 'fa-chart-line' },
 ];
 
 function Sidebar() {
@@ -23,14 +19,14 @@ function Sidebar() {
         <p className="text-xs text-slate-400">Gestion Boutique</p>
       </div>
 
-      <nav className="flex-1 p-3 space-y-1">
+      <nav className="flex-1 p-3 space-y-1 overflow-auto">
         {links.map(l => (
           <NavLink
             key={l.to}
             to={l.to}
             end={l.to === '/'}
             className={({ isActive }) =>
-              `block px-4 py-2 rounded ${isActive ? 'bg-blue-600' : 'hover:bg-slate-700'}`
+              `block px-4 py-2 rounded text-sm ${isActive ? 'bg-blue-600' : 'hover:bg-slate-700'}`
             }
           >
             <i className={`fa-solid ${l.icon} w-5`}></i> {l.label}

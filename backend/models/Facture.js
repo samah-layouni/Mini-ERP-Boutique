@@ -5,6 +5,7 @@ const ligneSchema = new mongoose.Schema({
   designation:  { type: String, default: '' },
   quantite:     { type: Number, default: 1 },
   prixUnitaire: { type: Number, default: 0 },
+  prixVente:    { type: Number, default: 0 },
   totalLigne:   { type: Number, default: 0 },
 });
 

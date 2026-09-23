@@ -16,7 +16,6 @@ router.post('/', auth, async (req, res) => {
   }
 });
 
-// ⬇️⬇️⬇️ C'EST ICI LA NOUVELLE ROUTE ⬇️⬇️⬇️
 router.post('/find-or-create', auth, async (req, res) => {
   try {
     const { code, nom, prixAchat, prixVente, categorie } = req.body;
@@ -29,7 +28,6 @@ router.post('/find-or-create', auth, async (req, res) => {
       return res.json({ produit, created: false });
     }
 
-    // Créer le produit s'il n'existe pas
     produit = await Produit.create({
       code: codeUpper,
       nom: nom || `Produit ${codeUpper}`,

@@ -7,10 +7,10 @@ dotenv.config();
 import produitsRoutes      from './routes/produits.js';
 import ventesRoutes        from './routes/ventes.js';
 import facturesRoutes      from './routes/factures.js';
-import depensesRoutes      from './routes/depenses.js';
 import rapportsRoutes      from './routes/rapports.js';
 import authRoutes          from './routes/auth.js';
-import achatsDirectsRoutes from './routes/achats-directs.js';   // ← NOUVEAU
+import achatsDirectsRoutes from './routes/achats-directs.js';
+import inventairesRoutes   from './routes/inventaires.js';
 
 const app = express();
 app.use(cors());
@@ -20,9 +20,9 @@ app.use('/api/auth',           authRoutes);
 app.use('/api/produits',       produitsRoutes);
 app.use('/api/ventes',         ventesRoutes);
 app.use('/api/factures',       facturesRoutes);
-app.use('/api/depenses',       depensesRoutes);
 app.use('/api/rapports',       rapportsRoutes);
-app.use('/api/achats-directs', achatsDirectsRoutes);            // ← NOUVEAU
+app.use('/api/achats-directs', achatsDirectsRoutes);
+app.use('/api/inventaires',    inventairesRoutes);
 
 mongoose.connect(process.env.MONGO_URI)
   .then(() => {
