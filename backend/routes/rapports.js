@@ -6,7 +6,7 @@ import auth from '../middleware/auth.js';
 
 const router = express.Router();
 
-// ========== DASHBOARD (année en cours ou période) ==========
+// ========== DASHBOARD ==========
 router.get('/dashboard', auth, async (req, res) => {
   const Facture = (await import('../models/Facture.js')).default;
   const AchatDirect = (await import('../models/AchatDirect.js')).default;
@@ -21,8 +21,7 @@ router.get('/dashboard', auth, async (req, res) => {
   from.setHours(0, 0, 0, 0);
   to.setHours(23, 59, 59, 999);
 
-  const ventes = await Vente.find({ date: { $gte: from, $lte: to } })
-    .populate('produit').lean();
+  const ventes = await Vente.find({ date: { $gte: from, $lte: to } }).populate('produit').lean();
   const totalVentes = ventes.reduce((s, v) => s + (v.total || 0), 0);
 
   const ventesMap = {};
@@ -36,10 +35,7 @@ router.get('/dashboard', auth, async (req, res) => {
   }
   const ventesJour = Object.values(ventesMap).sort((a, b) => b.total - a.total);
 
-  const depenses = await Depense.find({
-    date: { $gte: from, $lte: to },
-    estAchat: false,
-  }).lean();
+  const depenses = await Depense.find({ date: { $gte: from, $lte: to }, estAchat: false }).lean();
   const totalDepenses = depenses.reduce((s, d) => s + (d.montant || 0), 0);
 
   const depensesMap = {};
@@ -77,7 +73,7 @@ router.get('/dashboard', auth, async (req, res) => {
   });
 });
 
-// ========== RAPPORT PÉRIODE (analyse complète) ==========
+// ========== RAPPORT PÉRIODE ==========
 router.get('/periode', auth, async (req, res) => {
   const Facture = (await import('../models/Facture.js')).default;
   const AchatDirect = (await import('../models/AchatDirect.js')).default;
@@ -108,17 +104,14 @@ router.get('/periode', auth, async (req, res) => {
   const achatsDirects = await AchatDirect.find({ date: filter }).populate('produit').lean();
   const totalAchatsDirects = achatsDirects.reduce((s, a) => s + (a.total || 0), 0);
 
-  // Dépenses (hors achats)
+  // Dépenses
   const depenses = await Depense.find({ date: filter, estAchat: false }).lean();
   const totalDepenses = depenses.reduce((s, d) => s + (d.montant || 0), 0);
 
-  // Total achats = factures + hors facture
   const totalAchats = totalFactures + totalAchatsDirects;
-
-  // Bénéfice
   const benefice = totalVentes - totalAchats - totalDepenses;
 
-  // ========== Regroupement ventes par produit ==========
+  // Ventes par produit
   const ventesMap = {};
   for (const v of ventes) {
     const code = v.produit?.code || 'INCONNU';
@@ -130,7 +123,7 @@ router.get('/periode', auth, async (req, res) => {
   }
   const ventesParProduit = Object.values(ventesMap).sort((a, b) => b.total - a.total);
 
-  // ========== Regroupement achats par produit ==========
+  // Achats par produit
   const achatsMap = {};
   for (const f of factures) {
     for (const l of f.lignes || []) {
@@ -153,15 +146,16 @@ router.get('/periode', auth, async (req, res) => {
   }
   const achatsParProduit = Object.values(achatsMap).sort((a, b) => b.total - a.total);
 
-  // ========== Regroupement dépenses par catégorie ==========
-  const depensesMap = {};
-  for (const d of depenses) {
-    const cat = d.categorie || 'Sans catégorie';
-    if (!depensesMap[cat]) depensesMap[cat] = { categorie: cat, total: 0, nb: 0 };
-    depensesMap[cat].total += d.montant || 0;
-    depensesMap[cat].nb += 1;
-  }
-  const depensesParCategorie = Object.values(depensesMap).sort((a, b) => b.total - a.total);
+  // ✨ Dépenses détaillées (une par une)
+  const depensesDetail = depenses
+    .map(d => ({
+      date: d.date,
+      libelle: d.libelle || '—',
+      categorie: d.categorie || 'Sans catégorie',
+      montant: d.montant || 0,
+      note: d.note || '',
+    }))
+    .sort((a, b) => new Date(b.date) - new Date(a.date));
 
   res.json({
     from, to,
@@ -180,7 +174,7 @@ router.get('/periode', auth, async (req, res) => {
     nbDepenses: depenses.length,
     ventesParProduit,
     achatsParProduit,
-    depensesParCategorie,
+    depensesDetail,
   });
 });
 
@@ -364,6 +358,99 @@ router.get('/journal', auth, async (req, res) => {
     totalAchatsDirects: achatsDirects.reduce((s, a) => s + (a.total || 0), 0),
   };
   totaux.totalAchats = totaux.totalFactures + totaux.totalAchatsDirects;
+
+  res.json({ jours: liste, totaux });
+});
+
+// ========== ENTRÉES / SORTIES / DÉPENSES ==========
+router.get('/entrees-sorties', auth, async (req, res) => {
+  const Facture = (await import('../models/Facture.js')).default;
+  const AchatDirect = (await import('../models/AchatDirect.js')).default;
+  const Depense = (await import('../models/Depense.js')).default;
+
+  const now = new Date();
+  const defaultFrom = new Date(now.getFullYear(), 0, 1);
+  const defaultTo = new Date(now.getFullYear(), 11, 31);
+
+  const from = req.query.from ? new Date(req.query.from) : defaultFrom;
+  const to = req.query.to ? new Date(req.query.to) : defaultTo;
+
+  from.setHours(0, 0, 0, 0);
+  to.setHours(23, 59, 59, 999);
+
+  const filter = { $gte: from, $lte: to };
+
+  const factures = await Facture.find({ dateFacture: filter }).lean();
+  const totalFactures = factures.reduce((s, f) => s + (f.totalTTC || 0), 0);
+
+  const achatsDirects = await AchatDirect.find({ date: filter }).lean();
+  const totalAchatsDirects = achatsDirects.reduce((s, a) => s + (a.total || 0), 0);
+
+  const ventes = await Vente.find({ date: filter }).lean();
+  const totalVentes = ventes.reduce((s, v) => s + (v.total || 0), 0);
+
+  const depenses = await Depense.find({ date: filter, estAchat: false }).lean();
+  const totalDepenses = depenses.reduce((s, d) => s + (d.montant || 0), 0);
+
+  const jours = {};
+
+  const getJour = key => {
+    if (!jours[key]) {
+      jours[key] = {
+        date: key,
+        entreesFactures: 0,
+        entreesHorsFacture: 0,
+        entreesTotal: 0,
+        sortiesVentes: 0,
+        sortiesTotal: 0,
+        depenses: 0,
+        beneficeNet: 0,
+      };
+    }
+    return jours[key];
+  };
+
+  for (const f of factures) {
+    const key = new Date(f.dateFacture).toISOString().slice(0, 10);
+    const j = getJour(key);
+    j.entreesFactures += f.totalTTC || 0;
+  }
+  for (const a of achatsDirects) {
+    const key = new Date(a.date).toISOString().slice(0, 10);
+    const j = getJour(key);
+    j.entreesHorsFacture += a.total || 0;
+  }
+  for (const v of ventes) {
+    const key = new Date(v.date).toISOString().slice(0, 10);
+    const j = getJour(key);
+    j.sortiesVentes += v.total || 0;
+  }
+  for (const d of depenses) {
+    const key = new Date(d.date).toISOString().slice(0, 10);
+    const j = getJour(key);
+    j.depenses += d.montant || 0;
+  }
+
+  for (const k in jours) {
+    const j = jours[k];
+    j.entreesTotal = j.entreesFactures + j.entreesHorsFacture;
+    j.sortiesTotal = j.sortiesVentes;
+    j.beneficeNet = j.sortiesVentes - j.entreesTotal - j.depenses;
+  }
+
+  const liste = Object.values(jours).sort((a, b) => (a.date < b.date ? 1 : -1));
+
+  const totaux = {
+    from: from.toISOString().slice(0, 10),
+    to: to.toISOString().slice(0, 10),
+    entreesFactures: totalFactures,
+    entreesHorsFacture: totalAchatsDirects,
+    entreesTotal: totalFactures + totalAchatsDirects,
+    sortiesVentes: totalVentes,
+    sortiesTotal: totalVentes,
+    depenses: totalDepenses,
+    beneficeNet: totalVentes - (totalFactures + totalAchatsDirects) - totalDepenses,
+  };
 
   res.json({ jours: liste, totaux });
 });

@@ -4,17 +4,51 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
 import api from '../api/axios';
+import { exportRapportPDF } from '../utils/pdf';
 
 function Rapports() {
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [data, setData] = useState(null);
   const [evolution, setEvolution] = useState(null);
+  const [entreesSorties, setEntreesSorties] = useState(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
 
+  // ========== RACCOURCIS PÉRIODE ==========
+  const setAujourdhui = () => {
+    const t = new Date().toISOString().slice(0, 10);
+    setFrom(t);
+    setTo(t);
+  };
+
+  const setHier = () => {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    const y = d.toISOString().slice(0, 10);
+    setFrom(y);
+    setTo(y);
+  };
+
+  const set7DerniersJours = () => {
+    const d = new Date();
+    d.setDate(d.getDate() - 7);
+    setFrom(d.toISOString().slice(0, 10));
+    setTo(new Date().toISOString().slice(0, 10));
+  };
+
   const setCeMois = () => {
     const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const lastDay = new Date(y, d.getMonth() + 1, 0).getDate();
+    setFrom(`${y}-${m}-01`);
+    setTo(`${y}-${m}-${String(lastDay).padStart(2, '0')}`);
+  };
+
+  const setMoisDernier = () => {
+    const d = new Date();
+    d.setMonth(d.getMonth() - 1);
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, '0');
     const lastDay = new Date(y, d.getMonth() + 1, 0).getDate();
@@ -28,8 +62,21 @@ function Rapports() {
     setTo(`${y}-12-31`);
   };
 
+  const setAnneeDerniere = () => {
+    const y = new Date().getFullYear() - 1;
+    setFrom(`${y}-01-01`);
+    setTo(`${y}-12-31`);
+  };
+
+  const setToutAfficher = () => {
+    setFrom('');
+    setTo('');
+  };
+
+  // ========== CHARGEMENT ==========
   useEffect(() => {
     api.get('/rapports/evolution').then(r => setEvolution(r.data));
+    api.get('/rapports/entrees-sorties').then(r => setEntreesSorties(r.data));
   }, []);
 
   const load = async () => {
@@ -40,12 +87,26 @@ function Rapports() {
     setErr('');
     setLoading(true);
     try {
-      const { data } = await api.get(`/rapports/periode?from=${from}&to=${to}`);
-      setData(data);
+      const [dRes, eRes] = await Promise.all([
+        api.get(`/rapports/periode?from=${from}&to=${to}`),
+        api.get(`/rapports/entrees-sorties?from=${from}&to=${to}`),
+      ]);
+      setData(dRes.data);
+      setEntreesSorties(eRes.data);
     } catch (e) {
       setErr('Erreur lors du chargement');
     }
     setLoading(false);
+  };
+
+  // ========== EXPORT PDF ==========
+  const handleExportPDF = () => {
+    if (!data) {
+      alert("Clique d'abord sur '🔍 Analyser' pour charger les données");
+      return;
+    }
+    const periodeLabel = `Du ${new Date(from + 'T00:00:00').toLocaleDateString('fr-FR')} au ${new Date(to + 'T00:00:00').toLocaleDateString('fr-FR')}`;
+    exportRapportPDF(data, entreesSorties, periodeLabel);
   };
 
   const COLORS = ['#10b981', '#ef4444', '#f59e0b', '#6b7280', '#3b82f6'];
@@ -54,26 +115,76 @@ function Rapports() {
     <>
       <h1 className="text-2xl font-bold mb-6">📈 Rapports & Analyses</h1>
 
-      {/* FILTRE */}
+      {/* ========== FILTRE PÉRIODE + EXPORT PDF ========== */}
       <div className="bg-white rounded-xl shadow p-5 mb-6">
-        <div className="flex gap-3 items-end mb-3 flex-wrap">
+        <div className="flex justify-between items-center mb-3 flex-wrap gap-2">
+          <h2 className="text-lg font-bold">📅 Choisir la période</h2>
+          <button
+            onClick={handleExportPDF}
+            disabled={!data}
+            className={`px-4 py-2 rounded font-semibold ${
+              data
+                ? 'bg-purple-600 hover:bg-purple-700 text-white'
+                : 'bg-slate-300 text-slate-500 cursor-not-allowed'
+            }`}
+          >
+            📄 Télécharger le rapport PDF
+          </button>
+        </div>
+
+        <div className="flex gap-3 items-end flex-wrap mb-3">
           <div>
             <label className="text-xs text-slate-500">Du</label>
-            <input type="date" className="border rounded p-2 block" value={from} onChange={e => setFrom(e.target.value)} />
+            <input
+              type="date"
+              className="border rounded p-2 block"
+              value={from}
+              onChange={e => setFrom(e.target.value)}
+            />
           </div>
           <div>
             <label className="text-xs text-slate-500">Au</label>
-            <input type="date" className="border rounded p-2 block" value={to} onChange={e => setTo(e.target.value)} />
+            <input
+              type="date"
+              className="border rounded p-2 block"
+              value={to}
+              onChange={e => setTo(e.target.value)}
+            />
           </div>
-          <button onClick={load} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-semibold">
+          <button
+            onClick={load}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-semibold"
+          >
             {loading ? 'Chargement...' : '🔍 Analyser'}
           </button>
+          <button
+            onClick={setToutAfficher}
+            className="bg-slate-400 hover:bg-slate-500 text-white px-4 py-2 rounded"
+          >
+            🔄 Tout afficher
+          </button>
         </div>
+
         <div className="flex gap-2 flex-wrap">
           <span className="text-xs text-slate-500 self-center">Raccourcis :</span>
-          <button onClick={setCeMois} className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1 rounded text-xs font-semibold">📅 Ce mois</button>
-          <button onClick={setAnneeCourante} className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1 rounded text-xs font-semibold">📅 Année en cours</button>
+          <button onClick={setAujourdhui} className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1 rounded text-xs font-semibold">📅 Aujourd'hui</button>
+          <button onClick={setHier} className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1 rounded text-xs font-semibold">📅 Hier</button>
+          <button onClick={set7DerniersJours} className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1 rounded text-xs font-semibold">📅 7 derniers jours</button>
+          <button onClick={setCeMois} className="bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1 rounded text-xs font-semibold">📅 Ce mois</button>
+          <button onClick={setMoisDernier} className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1 rounded text-xs font-semibold">📅 Mois dernier</button>
+          <button onClick={setAnneeCourante} className="bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1 rounded text-xs font-semibold">📅 Année en cours</button>
+          <button onClick={setAnneeDerniere} className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1 rounded text-xs font-semibold">📅 Année {new Date().getFullYear() - 1}</button>
         </div>
+
+        {from && to && (
+          <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800">
+            📊 Période analysée :{' '}
+            <b>
+              Du {new Date(from + 'T00:00:00').toLocaleDateString('fr-FR')} au{' '}
+              {new Date(to + 'T00:00:00').toLocaleDateString('fr-FR')}
+            </b>
+          </div>
+        )}
       </div>
 
       {err && <div className="bg-red-100 text-red-700 p-3 rounded mb-4">{err}</div>}
@@ -150,6 +261,90 @@ function Rapports() {
             </div>
           </div>
 
+          {/* ENTRÉES / SORTIES / DÉPENSES */}
+          {entreesSorties && (
+            <>
+              <h2 className="text-xl font-bold mb-3 mt-8">
+                📊 Tableau Entrées / Sorties / Dépenses — Du {new Date(entreesSorties.totaux.from + 'T00:00:00').toLocaleDateString('fr-FR')} au {new Date(entreesSorties.totaux.to + 'T00:00:00').toLocaleDateString('fr-FR')}
+              </h2>
+
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-4">
+                <div className="bg-white rounded-xl shadow p-4 border-l-4 border-red-500">
+                  <p className="text-xs text-slate-500">📄 Entrées — Factures</p>
+                  <p className="text-xl font-bold text-red-600">{entreesSorties.totaux.entreesFactures.toFixed(2)} DT</p>
+                  <p className="text-xs text-slate-400">Marchandises</p>
+                </div>
+                <div className="bg-white rounded-xl shadow p-4 border-l-4 border-orange-500">
+                  <p className="text-xs text-slate-500">🛍️ Entrées — Hors facture</p>
+                  <p className="text-xl font-bold text-orange-600">{entreesSorties.totaux.entreesHorsFacture.toFixed(2)} DT</p>
+                  <p className="text-xs text-slate-400">Marchandises</p>
+                </div>
+                <div className="bg-white rounded-xl shadow p-4 border-l-4 border-green-500">
+                  <p className="text-xs text-slate-500">💰 Sorties — Ventes</p>
+                  <p className="text-xl font-bold text-green-600">{entreesSorties.totaux.sortiesVentes.toFixed(2)} DT</p>
+                  <p className="text-xs text-slate-400">Marchandises</p>
+                </div>
+                <div className="bg-white rounded-xl shadow p-4 border-l-4 border-slate-700">
+                  <p className="text-xs text-slate-500">💸 Dépenses</p>
+                  <p className="text-xl font-bold text-slate-700">{entreesSorties.totaux.depenses.toFixed(2)} DT</p>
+                  <p className="text-xs text-slate-400">Loyer, électricité...</p>
+                </div>
+                <div className={`bg-white rounded-xl shadow p-4 border-l-4 ${entreesSorties.totaux.beneficeNet >= 0 ? 'border-blue-500' : 'border-red-500'}`}>
+                  <p className="text-xs text-slate-500">📈 Bénéfice net</p>
+                  <p className={`text-xl font-bold ${entreesSorties.totaux.beneficeNet >= 0 ? 'text-blue-600' : 'text-red-600'}`}>{entreesSorties.totaux.beneficeNet.toFixed(2)} DT</p>
+                  <p className="text-xs text-slate-400">Ventes − Achats − Dép.</p>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl shadow overflow-auto mb-8">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-100 sticky top-0">
+                    <tr>
+                      <th className="p-2 text-left">📅 Date</th>
+                      <th className="p-2 text-right text-red-700">Factures</th>
+                      <th className="p-2 text-right text-orange-700">Hors facture</th>
+                      <th className="p-2 text-right text-red-700">Total Entrées</th>
+                      <th className="p-2 text-right text-green-700">Ventes</th>
+                      <th className="p-2 text-right text-slate-700">Dépenses</th>
+                      <th className="p-2 text-right">Bénéfice net</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {entreesSorties.jours.map(j => (
+                      <tr key={j.date} className="border-b hover:bg-slate-50">
+                        <td className="p-2 font-semibold">
+                          {new Date(j.date).toLocaleDateString('fr-FR', {
+                            weekday: 'short', day: '2-digit', month: 'short', year: 'numeric',
+                          })}
+                        </td>
+                        <td className="p-2 text-right text-red-600">{j.entreesFactures > 0 ? j.entreesFactures.toFixed(2) : '—'}</td>
+                        <td className="p-2 text-right text-orange-600">{j.entreesHorsFacture > 0 ? j.entreesHorsFacture.toFixed(2) : '—'}</td>
+                        <td className="p-2 text-right font-bold text-red-700">{j.entreesTotal.toFixed(2)} DT</td>
+                        <td className="p-2 text-right font-bold text-green-700">{j.sortiesVentes > 0 ? j.sortiesVentes.toFixed(2) : '—'}</td>
+                        <td className="p-2 text-right text-slate-700">{j.depenses > 0 ? j.depenses.toFixed(2) : '—'}</td>
+                        <td className={`p-2 text-right font-bold ${j.beneficeNet >= 0 ? 'text-blue-600' : 'text-red-600'}`}>{j.beneficeNet.toFixed(2)} DT</td>
+                      </tr>
+                    ))}
+                    {entreesSorties.jours.length === 0 && (
+                      <tr><td colSpan="7" className="p-4 text-center text-slate-500">Aucune opération sur cette période</td></tr>
+                    )}
+                    {entreesSorties.jours.length > 0 && (
+                      <tr className="bg-slate-800 text-white font-bold border-t-2 border-slate-900">
+                        <td className="p-2">TOTAL PÉRIODE</td>
+                        <td className="p-2 text-right text-red-300">{entreesSorties.totaux.entreesFactures.toFixed(2)}</td>
+                        <td className="p-2 text-right text-orange-300">{entreesSorties.totaux.entreesHorsFacture.toFixed(2)}</td>
+                        <td className="p-2 text-right">{entreesSorties.totaux.entreesTotal.toFixed(2)} DT</td>
+                        <td className="p-2 text-right text-green-300">{entreesSorties.totaux.sortiesVentes.toFixed(2)}</td>
+                        <td className="p-2 text-right text-slate-300">{entreesSorties.totaux.depenses.toFixed(2)}</td>
+                        <td className={`p-2 text-right ${entreesSorties.totaux.beneficeNet >= 0 ? 'text-blue-300' : 'text-red-300'}`}>{entreesSorties.totaux.beneficeNet.toFixed(2)} DT</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+
           {/* GRAPHIQUES */}
           <div className="grid md:grid-cols-2 gap-6 mb-8">
             <div className="bg-white rounded-xl shadow p-5">
@@ -163,11 +358,7 @@ function Rapports() {
                       { name: 'Achats Hors facture', value: data.totalAchatsDirects },
                       { name: 'Dépenses', value: data.totalDepenses },
                     ].filter(d => d.value > 0)}
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={100}
-                    fill="#8884d8"
-                    dataKey="value"
+                    cx="50%" cy="50%" outerRadius={100} fill="#8884d8" dataKey="value"
                     label={({ name, value }) => `${name}: ${value.toFixed(2)}`}
                   >
                     {[0, 1, 2, 3].map((entry, index) => (
@@ -264,27 +455,39 @@ function Rapports() {
             </>
           )}
 
-          {/* DÉPENSES PAR CATÉGORIE */}
-          {data.depensesParCategorie && data.depensesParCategorie.length > 0 && (
+          {/* ✨ DÉPENSES DÉTAILLÉES */}
+          {data.depensesDetail && data.depensesDetail.length > 0 && (
             <>
-              <h3 className="text-lg font-bold mb-3">💸 Dépenses par catégorie</h3>
+              <h3 className="text-lg font-bold mb-3">💸 Détail des dépenses</h3>
               <div className="bg-white rounded-xl shadow overflow-auto mb-8">
                 <table className="w-full text-sm">
                   <thead className="bg-slate-100">
                     <tr>
+                      <th className="p-2 text-left">📅 Date</th>
+                      <th className="p-2 text-left">Libellé</th>
                       <th className="p-2 text-left">Catégorie</th>
-                      <th className="p-2 text-center">Nb dépenses</th>
-                      <th className="p-2 text-right">Total</th>
+                      <th className="p-2 text-left">Note</th>
+                      <th className="p-2 text-right">Montant</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {data.depensesParCategorie.map(d => (
-                      <tr key={d.categorie} className="border-b hover:bg-slate-50">
-                        <td className="p-2 font-medium">{d.categorie}</td>
-                        <td className="p-2 text-center">{d.nb}</td>
-                        <td className="p-2 text-right font-bold text-slate-700">{d.total.toFixed(2)} DT</td>
+                    {data.depensesDetail.map((d, i) => (
+                      <tr key={i} className="border-b hover:bg-slate-50">
+                        <td className="p-2 text-xs">{new Date(d.date).toLocaleDateString('fr-FR')}</td>
+                        <td className="p-2 font-medium">{d.libelle}</td>
+                        <td className="p-2 text-center">
+                          <span className="bg-slate-100 text-slate-700 px-2 py-1 rounded text-xs">{d.categorie}</span>
+                        </td>
+                        <td className="p-2 text-xs text-slate-500">{d.note || '—'}</td>
+                        <td className="p-2 text-right font-bold text-slate-700">{d.montant.toFixed(2)} DT</td>
                       </tr>
                     ))}
+                    <tr className="bg-slate-800 text-white font-bold border-t-2 border-slate-900">
+                      <td className="p-2" colSpan="4">
+                        TOTAL DÉPENSES ({data.depensesDetail.length} opération{data.depensesDetail.length > 1 ? 's' : ''})
+                      </td>
+                      <td className="p-2 text-right text-base">{data.totalDepenses.toFixed(2)} DT</td>
+                    </tr>
                   </tbody>
                 </table>
               </div>
