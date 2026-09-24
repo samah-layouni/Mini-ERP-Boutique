@@ -40,7 +40,6 @@ function Login() {
         <button className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded">
           Connexion
         </button>
-        <p className="text-xs text-center text-slate-400">Défaut : admin / admin123</p>
       </form>
     </div>
   );
